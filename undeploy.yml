@@ -1,0 +1,34 @@
+---
+- name: Un-deploy Apache webserver and cleanup
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Stop Apache service
+      service:
+        name: apache2
+        state: stopped
+
+    - name: Disable Apache service
+      service:
+        name: apache2
+        enabled: no
+
+    - name: Remove Apache package
+      apt:
+        name: apache
+        state: absent
+        purge: yes
+
+    - name: Remove custom index.html
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Remove custom vhost config
+      file:
+        path: /etc/apache2/sites-available/sjsu-8080.conf
+        state: absent
+
+
+
