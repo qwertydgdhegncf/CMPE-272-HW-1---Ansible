@@ -1,0 +1,58 @@
+---
+- name: Deploy Apache on port 8080 with custom page
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Install Apache
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+
+    - name: Ensure Apache also listens on 8080 (keep 80 too)
+      lineinfile:
+        path: /etc/apache2/ports.conf
+        regexp: '^Listen 8080$'
+        line: 'Listen 8080'
+        state: present
+        insertafter: EOF
+      notify: restart apache
+
+    - name: Create vhost for port 8080
+      copy:
+        dest: /etc/apache2/sites-available/sjsu-8080.conf
+        content: |
+          <VirtualHost *:8080>
+            ServerName localhost
+            DocumentRoot /var/www/html
+            <Directory /var/www/html>
+              Require all granted
+            </Directory>
+            ErrorLog ${APACHE_LOG_DIR}/sjsu-8080-error.log
+            CustomLog ${APACHE_LOG_DIR}/sjsu-8080-access.log combined
+          </VirtualHost>
+      notify: restart apache
+
+    - name: Enable vhost sjsu-8080
+      command: a2ensite sjsu-8080.conf
+      args:
+        creates: /etc/apache2/sites-enabled/sjsu-8080.conf
+      notify: restart apache
+
+    - name: Deploy index.html per host
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!doctype html><html><body style="font-family:Arial;text-align:center;margin-top:10vh">
+          <h1>Hello World from SJSU-{{ sjsu_id }}</h1>
+          <p>Host: {{ inventory_hostname }}</p>
+          </body></html>
+
+  handlers:
+    - name: restart apache
+      service:
+        name: apache2
+        state: restarted
+
+
